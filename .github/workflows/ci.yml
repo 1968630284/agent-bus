@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Pester 4.10.1
+        shell: powershell
+        run: |
+          Install-Module Pester -RequiredVersion 4.10.1 -Force -SkipPublisherCheck -Scope CurrentUser -Confirm:$false
+
+      - name: Pester tests
+        shell: powershell
+        run: |
+          $env:PSModulePath = (Join-Path $env:USERPROFILE 'Documents\WindowsPowerShell\Modules') + ';' + $env:PSModulePath
+          Import-Module Pester -RequiredVersion 4.10.1 -Force
+          $r = Invoke-Pester ./tests/Bus.Tests.ps1 -PassThru -Quiet
+          "passed=$($r.PassedCount) failed=$($r.FailedCount)"
+          if ($r.FailedCount -gt 0) { exit 1 }
+
+      - name: Client syntax
+        shell: bash
+        run: |
+          node --check clients/node/agent-bus.mjs
+          python -m py_compile clients/python/agent_bus.py
+
+      - name: Cross-language round trip
+        shell: powershell
+        run: |
+          $bus = Join-Path $env:RUNNER_TEMP 'bus_ci'
+          ./bus.ps1 init -Root $bus | Out-Null
+          ./bus.ps1 post -Root $bus -From ps -Text "from powershell" | Out-Null
+          node ./clients/node/agent-bus.mjs post --root $bus --from js --text "from node" | Out-Null
+          python ./clients/python/agent_bus.py --root $bus post --from py --text "from python" | Out-Null
+          $n = @(Get-Content (Join-Path $bus 'board.jsonl') | Where-Object { $_.Trim() }).Count
+          "messages=$n"
+          if ($n -ne 3) { throw "expected 3 messages, got $n" }
