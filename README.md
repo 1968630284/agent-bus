@@ -33,6 +33,9 @@
 # 只看我上次之后的新消息（游标消费）
 .\bus.ps1 tail -Since a8ec6fdf
 
+# 常驻盯着，有新的就打出来（Ctrl+C 退出）
+.\bus.ps1 watch -Interval 2
+
 # 机器读
 .\bus.ps1 board -Json
 ```
@@ -85,12 +88,59 @@ Invoke-Pester .\tests\Bus.Tests.ps1
 
 覆盖：初始化布局、字段完整性、坏行跳过、游标增量、以及 **4 个并发写入者 × 25 条 = 100 条不丢不串行**。
 
+客户端另有跨语言验证：PowerShell / Python / Node 三个进程同时各写 20 条，落盘 60 条、解析失败 0。
+
+## 客户端
+
+三种语言的实现都遵循同一份协议，可以混用。
+
+**PowerShell**（仓库根目录，无依赖）
+
+```powershell
+.\bus.ps1 post -From "助手A" -Text "hello"
+.\bus.ps1 watch -Interval 2
+```
+
+**Python**（`clients/python/agent_bus.py`，仅标准库）
+
+```python
+import sys; sys.path.insert(0, "clients/python")
+from agent_bus import Bus
+
+bus = Bus("D:/work/project/bus")
+mid = bus.post("助手A", "48 号开工", kind="task", to="助手B")
+for m in bus.tail():            # 只拿上次之后的新消息
+    print(m["from"], m["text"])
+```
+
+```bash
+python clients/python/agent_bus.py --root D:/work/project/bus post --from 助手A --text "hello"
+```
+
+**Node**（`clients/node/agent-bus.mjs`，零依赖，Node 18+）
+
+```js
+import { Bus } from './clients/node/agent-bus.mjs';
+
+const bus = new Bus('D:/work/project/bus');
+bus.post('助手A', '48 号开工', { kind: 'task', to: '助手B' });
+for (const m of bus.tail()) console.log(m.from, m.text);
+```
+
+```bash
+node clients/node/agent-bus.mjs --root D:/work/project/bus post --from 助手A --text "hello"
+```
+
+三种实现的 `tail` 都支持游标：记住最后一条的 `id`，下次传回去就只拿增量，不用每轮重读全量。
+
 ## 目录
 
 ```
-bus.ps1               命令行入口（PowerShell 5.1+，无外部依赖）
-PROTOCOL.md           协议规范 v1
-tests/Bus.Tests.ps1   Pester 测试
+bus.ps1                         PowerShell 客户端（CLI）
+PROTOCOL.md                     协议规范 v1
+clients/python/agent_bus.py     Python 客户端（库 + CLI）
+clients/node/agent-bus.mjs      Node 客户端（库 + CLI）
+tests/Bus.Tests.ps1             Pester 测试
 ```
 
 ## 边界
@@ -102,7 +152,7 @@ tests/Bus.Tests.ps1   Pester 测试
 
 ## 接入其它语言
 
-协议不依赖 PowerShell：
+协议不依赖 PowerShell，也不用非得用上面的客户端。最小实现就是往 `board.jsonl` 追加一行：
 
 ```python
 import json
@@ -111,3 +161,5 @@ with open("bus/board.jsonl", "a", encoding="utf-8", newline="\n") as f:
                         "kind": "status", "text": "hi", "ref": "", "id": "1a2b3c4d"},
                        ensure_ascii=False) + "\n")
 ```
+
+自己实现时请照 [PROTOCOL.md](PROTOCOL.md) 的 §5 处理并发（独占写 + 抖动重试），否则多进程写会静默丢行。

@@ -9,6 +9,7 @@
     [string]$Since = '',
     [string]$Root = '',
     [int]$Limit = 20,
+    [int]$Interval = 2,
     [switch]$Json
 )
 
@@ -165,6 +166,30 @@ switch ($Cmd.ToLower()) {
         if ($Json) { Write-Json $items; break }
         foreach ($m in $items) { Format-Message $m }
     }
+    'watch' {
+        # 常驻轮询：先把最近 5 条作为上下文打出来，之后只输出新增消息。
+        # Ctrl+C 退出；断线重开时用 -Since <id> 接着上次的位置。
+        $seen = $Since
+        if (-not $seen) {
+            $recent = @(Read-BusLines 'board.jsonl' | Select-Object -Last 5)
+            foreach ($m in $recent) { Format-Message $m }
+            if ($recent.Count -gt 0) { $seen = $recent[$recent.Count - 1].id }
+        }
+        while ($true) {
+            $all = @(Read-BusLines 'board.jsonl')
+            $new = @()
+            if ($seen) {
+                $start = -1
+                for ($i = $all.Count - 1; $i -ge 0; $i--) { if ($all[$i].id -eq $seen) { $start = $i; break } }
+                # 板子被整体重写时找不到游标，退回最近 Limit 条，保证不会永远卡住
+                $new = if ($start -ge 0) { @($all | Select-Object -Skip ($start + 1)) } else { @($all | Select-Object -Last $Limit) }
+            } else {
+                $new = $all
+            }
+            foreach ($m in $new) { Format-Message $m; $seen = $m.id }
+            Start-Sleep -Seconds ([Math]::Max(1, $Interval))
+        }
+    }
     'agents' {
         $path = Get-BusFile 'agents.json'
         if (-not (Test-Path -LiteralPath $path)) { return }
@@ -187,6 +212,7 @@ switch ($Cmd.ToLower()) {
                                                 发一条留言，stdout 返回 posted <id>
   board [-Limit 20] [-Json]                     看最近 N 条
   tail  -Since <id> [-Limit 20] [-Json]         只取该 id 之后的新消息（游标消费）
+  watch [-Since <id>] [-Interval 2]              常驻轮询，只打新增消息（Ctrl+C 退出）
   agents [-Json]                                成员登记
   whoami                                        当前总线目录与系统用户
 
