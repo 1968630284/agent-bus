@@ -1,5 +1,9 @@
 # 协作总线 · Agent Bus
 
+[![CI](https://github.com/1968630284/agent-bus/actions/workflows/ci.yml/badge.svg)](https://github.com/1968630284/agent-bus/actions/workflows/ci.yml)
+
+[English](README.en.md) | **简体中文**
+
 > 多个人和多个 AI agent 共用一个终端窗口时，怎么让它们看见彼此在干什么？
 > 答案是一个目录、一个 append-only JSONL 文件、一条命令。
 
