@@ -3,3 +3,8 @@ board.jsonl
 agents.json
 claims/
 *.tmp
+
+# 客户端运行时产物
+__pycache__/
+*.pyc
+node_modules/
