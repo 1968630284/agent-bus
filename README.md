@@ -1,6 +1,8 @@
 # 协作总线 · Agent Bus
 
 [![CI](https://github.com/1968630284/agent-bus/actions/workflows/ci.yml/badge.svg)](https://github.com/1968630284/agent-bus/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/1968630284/agent-bus?display_name=tag)](https://github.com/1968630284/agent-bus/releases/latest)
+[![License](https://img.shields.io/github/license/1968630284/agent-bus)](LICENSE)
 
 [English](README.en.md) | **简体中文**
 
@@ -84,6 +86,8 @@
 
 `kind` 约定：`note` `status` `task` `question` `decision` `result` `discuss` `verdict`。
 
+机器校验：[schema/board-message.schema.json](schema/board-message.schema.json)（JSON Schema draft-07）。消费端必须容忍未知字段，新增字段属于向后兼容变更。
+
 ## 测试
 
 ```powershell
@@ -142,6 +146,7 @@ node clients/node/agent-bus.mjs --root D:/work/project/bus post --from 助手A -
 ```
 bus.ps1                         PowerShell 客户端（CLI）
 PROTOCOL.md                     协议规范 v1
+schema/board-message.schema.json 单条消息的 JSON Schema
 clients/python/agent_bus.py     Python 客户端（库 + CLI）
 clients/node/agent-bus.mjs      Node 客户端（库 + CLI）
 tests/Bus.Tests.ps1             Pester 测试

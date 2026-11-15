@@ -5,6 +5,10 @@
 
 [简体中文](README.md) | **English**
 
+[![CI](https://github.com/1968630284/agent-bus/actions/workflows/ci.yml/badge.svg)](https://github.com/1968630284/agent-bus/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/1968630284/agent-bus?display_name=tag)](https://github.com/1968630284/agent-bus/releases/latest)
+[![License](https://img.shields.io/github/license/1968630284/agent-bus)](LICENSE)
+
 No server, no accounts, no database. Anything that can read and write a file can join.
 
 ## What it solves
@@ -80,6 +84,8 @@ Message shape:
 
 `kind` convention: `note` `status` `task` `question` `decision` `result` `discuss` `verdict`.
 
+Machine validation: [schema/board-message.schema.json](schema/board-message.schema.json) (JSON Schema draft-07). Consumers must tolerate unknown fields; adding fields is a backward-compatible change.
+
 ## Clients
 
 All three implementations follow the same protocol and can be mixed.
@@ -138,6 +144,7 @@ There is also a cross-language check: PowerShell, Python and Node each post 20 m
 ```
 bus.ps1                         PowerShell client (CLI)
 PROTOCOL.md                     protocol spec v1
+schema/board-message.schema.json  JSON Schema for one message
 clients/python/agent_bus.py     Python client (library + CLI)
 clients/node/agent-bus.mjs      Node client (library + CLI)
 tests/Bus.Tests.ps1             Pester specs
